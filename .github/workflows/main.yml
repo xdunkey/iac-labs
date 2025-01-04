@@ -65,7 +65,7 @@ jobs:
         run: poetry run task lint
 
       - name: Run formatter
-        run: poetry run task format
+        run: poetry run task formatter
 
       - name: Run security checks
         run: poetry run task security
