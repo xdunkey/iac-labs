@@ -1,46 +1,55 @@
-name: Python application
+name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   pull_request:
-    branches: ["main"]
-
-permissions:
-  contents: read
+    branches:
+      - main
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, 3.10]
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.11"
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Change to correct directory
-      run: cd example-app
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
 
-    - name: Install Poetry Action
-      uses: snok/install-poetry@v1.3.4
-      with:
-        version: latest
-        virtualenvs-create: true
-        installer-parallel: true
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Install dependencies with Poetry
-      run: |
-        poetry install
+      - name: Install dependencies
+        run: |
+          poetry install --no-root
+        working-directory: ./example-app
 
-    - name: Lint with flake8
-      run: |
-        poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Run linters
+        run: |
+          poetry run task lint
+        working-directory: ./example-app
 
-    - name: Test with pytest
-      run: |
-        poetry run pytest
+      - name: Run tests
+        run: |
+          poetry run task test
+        working-directory: ./example-app
