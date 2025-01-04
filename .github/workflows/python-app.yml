@@ -1,134 +1,139 @@
-# GitHub Actions workflow to build, test, and lint a Python project using Poetry
-# For detailed docs, visit: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
 name: CI Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 permissions:
   contents: read
 
+defaults:
+  run:
+    working-directory: ./example-app
+    shell: bash
+
 jobs:
-  setup-and-build:
-    name: Setup and Build
-    runs-on: ubuntu-latest
+  build:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./example-app
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
         uses: actions/setup-python@v3
         with:
-          python-version: "3.13"
-
+          python-version: "3.11"
+          
       - name: Install Poetry
         uses: snok/install-poetry@v1.3.4
-
-      - name: Install project dependencies
+        
+      - name: Install dependecies with poetry
         run: poetry install --no-root
-
-      - name: Cache virtual environment
+        
+      - name: Cache build
+        id: cached-poetry-dependencies
         uses: actions/cache@v3
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+          key: ${{ runner.os }}-venv
 
-  lint:
-    name: Lint Codebase
+  linter:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    needs: setup-and-build
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./example-app
-
+    needs: build
     steps:
-      - name: Recover cached environment
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+          
+      - name: Install Poetry 
+        uses: snok/install-poetry@v1.3.4
+        
+      - name: Cache build
+        id: cached-poetry-dependencies
         uses: actions/cache@v3
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Run linter
+          path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+          key: ${{ runner.os }}-venv
+          
+      - name: lint
         run: poetry run task lint
 
-  code-format:
-    name: Code Formatter
+  formatter:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    needs: setup-and-build
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./example-app
-
+    needs: build
     steps:
-      - name: Recover cached environment
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+      - name: Install Poetry
+      
+        uses: snok/install-poetry@v1.3.4
+      - name: Cache build
+      
+        id: cached-poetry-dependencies
         uses: actions/cache@v3
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Format code
+          path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+          key: ${{ runner.os }}-venv
+          
+      - name: formatter
         run: poetry run task formatter
 
-  security-check:
-    name: Security Scan
+  security:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    needs: setup-and-build
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./example-app
-
+    needs: build
     steps:
-      - name: Recover cached environment
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+          
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.3.4
+        
+      - name: Cache build
+        id: cached-poetry-dependencies
         uses: actions/cache@v3
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Run security checks
+          path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+          key: ${{ runner.os }}-venv
+          
+      - name: security
         run: poetry run task security
 
-  unit-tests:
-    name: Run Unit Tests
+  unittests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    needs: [lint, code-format, security-check]
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./example-app
-
+    needs: [linter, formatter, security]
     steps:
-      - name: Recover cached environment
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+          
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.3.4
+        
+      - name: Cache build
+        id: cached-poetry-dependencies
         uses: actions/cache@v3
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Execute unit tests
+          path: /home/runner/work/iac-labs/iac-labs/example-app/.venv
+          key: ${{ runner.os }}-venv
+          
+      - name: Run unit tests
         run: poetry run task test
