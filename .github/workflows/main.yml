@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  setup:
+  build:
     name: Build Dependencies
     runs-on: ubuntu-latest
 
@@ -29,15 +29,16 @@ jobs:
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: poetry install --no-root
+        run: ~/.local/bin/poetry install --no-root
 
-  linters:
-    name: Run Linters & Formatters
+  lint:
+    name: Lint Code
     runs-on: ubuntu-latest
+    needs: build
 
     defaults:
       run:
@@ -52,27 +53,16 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
-
       - name: Install dependencies
-        run: poetry install --no-root
+        run: ~/.local/bin/poetry install --no-root
 
       - name: Run linters
-        run: poetry run task lint
+        run: ~/.local/bin/poetry run task lint
 
-      - name: Run formatter
-        run: poetry run task formatter
-
-      - name: Run security checks
-        run: poetry run task security
-
-  tests:
-    name: Run Unit Tests
+  formatter:
+    name: Format Code
     runs-on: ubuntu-latest
+    needs: build
 
     defaults:
       run:
@@ -87,14 +77,85 @@ jobs:
         with:
           python-version: 3.12
 
+      - name: Install dependencies
+        run: ~/.local/bin/poetry install --no-root
+
+      - name: Run formatter
+        run: ~/.local/bin/poetry run task formatter
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    needs: build
+
+    defaults:
+      run:
+        working-directory: ./example-app
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: ~/.local/bin/poetry install --no-root
+
+      - name: Run security checks
+        run: ~/.local/bin/poetry run task security
+
+  unittests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    needs: [lint, formatter, security]
+
+    defaults:
+      run:
+        working-directory: ./example-app
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: ~/.local/bin/poetry install --no-root
+
+      - name: Run tests
+        run: ~/.local/bin/poetry run task test
+
+  lint-formatter-security:
+    name: Run Lint, Formatter, and Security Checks
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.12
+
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
-      - name: Install dependencies
-        run: poetry install --no-root
+      - name: Run linters
+        run: ~/.local/bin/poetry run task lint
 
-      - name: Run tests
-        run: poetry run task test
+      - name: Run formatter
+        run: ~/.local/bin/poetry run task formatter
+
+      - name: Run security checks
+        run: ~/.local/bin/poetry run task security
